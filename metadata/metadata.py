@@ -6,6 +6,8 @@ import pymysql
 
 load_dotenv()
 
+
+
 def db_conn():
     conn = pymysql.connect(
         database=os.getenv("db_name"),
