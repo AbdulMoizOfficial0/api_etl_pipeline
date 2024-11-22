@@ -52,12 +52,15 @@ def metadata_download(source_id):
     for entity_type in entity_types:
         entity_name = entity_type.get('Name')
         classes.append(entity_name)
-    print(classes)
 
-        # for prop in entity_type.findall('{http://docs.oasis-open.org/odata/ns/edm}Property'):
-        #     prop_name = prop.get('Name')
-        #     prop_type = prop.get('Type')
-        #     print(f"Property Name: {prop_name}, Type: {prop_type}")
+        entries = root.findall(f'.//{entity_name}')
+
+        for entry in entries:
+            for prop in entry:
+                prop_name = prop.get('Name')
+                prop_value = prop.text
+                class_data.append(prop_value)
+    print(class_data)
 
 
 
