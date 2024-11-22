@@ -25,5 +25,43 @@ def db_conn():
     )
     return conn
 
+def metadata_download(source_id):
+    conn = db_conn()
+    cur = conn.cursor()
+    classes = []
+    class_data = []
+
+    get_api = '''SELECT auth->>'$.loginUrl' AS api_url FROM sources WHERE source_id = %s;'''
+    get_key = '''SELECT auth->>'$.password' AS api_key FROM sources WHERE source_id = %s;'''
+
+    # source_api
+    cur.execute(get_api, (source_id,))
+    api_url = [row[0] for row in cur.fetchall()]
+
+    # source_key
+    cur.execute(get_key, (source_id,))
+    api_key = [row[0] for row in cur.fetchall()]
+    header = {
+        "Authorization": f"Bearer {api_key[0]}"
+    }
+    resp = requests.get(url=api_url[0], headers=header)
+    xml_data = resp.text
+    root = ET.fromstring(xml_data)
+    entity_types = root.findall('.//{http://docs.oasis-open.org/odata/ns/edm}EntityType')
+
+    for entity_type in entity_types:
+        entity_name = entity_type.get('Name')
+        classes.append(entity_name)
+    print(classes)
+
+        # for prop in entity_type.findall('{http://docs.oasis-open.org/odata/ns/edm}Property'):
+        #     prop_name = prop.get('Name')
+        #     prop_type = prop.get('Type')
+        #     print(f"Property Name: {prop_name}, Type: {prop_type}")
+
+
+
+db = db_conn()
+metadata_download(897)
 
 
