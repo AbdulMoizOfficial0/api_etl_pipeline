@@ -1,4 +1,3 @@
-import os
 import xml.etree.ElementTree as ET
 import requests
 import pymysql
@@ -29,12 +28,7 @@ def metadata_download(source_id):
     conn = db_conn()
     cur = conn.cursor()
     classes = []
-    property_data = []
-    member_data = []
-    office_data = []
-    media_data = []
-    openhouse_data = []
-    room_data = []
+    entity_data = {}
 
     get_api = '''SELECT auth->>'$.loginUrl' AS api_url FROM sources WHERE source_id = %s;'''
     get_key = '''SELECT auth->>'$.password' AS api_key FROM sources WHERE source_id = %s;'''
@@ -58,40 +52,55 @@ def metadata_download(source_id):
     for entity_type in entity_types:
         entity_name = entity_type.get('Name')
         classes.append(entity_name)
-        properties = entity_type.findall('edm:Property', namespace)
-        if entity_name == classes[0]:
-            for prop in properties:
-                prop_name = prop.get('Name')
-                property_data.append(prop_name)
-        elif entity_name == classes[1]:
-            for prop in properties:
-                prop_name = prop.get('Name')
-                member_data.append(prop_name)
-        elif entity_name == classes[2]:
-            for prop in properties:
-                prop_name = prop.get('Name')
-                office_data.append(prop_name)
-        elif entity_name == classes[3]:
-            for prop in properties:
-                prop_name = prop.get('Name')
-                media_data.append(prop_name)
-        elif entity_name == classes[4]:
-            for prop in properties:
-                prop_name = prop.get('Name')
-                openhouse_data.append(prop_name)
-        elif entity_name == classes[5]:
-            for prop in properties:
-                prop_name = prop.get('Name')
-                room_data.append(prop_name)
-    return classes, property_data, member_data, office_data, media_data, openhouse_data, room_data
+        properties = [prop.get('Name') for prop in entity_type.findall('edm:Property', namespace)]
+        entity_data[entity_name] = properties
 
-def insertion(conn, classes):
+    return classes, entity_data, source_id
+
+def class_insertion(classes, source_id):
     conn = db_conn()
     cur = conn.cursor()
-    pass
+
+    for class_name in classes:
+        query = """
+                INSERT INTO demo.class_metadata (source_id, source_name, class_name, download_flag)
+                VALUES (%s, %s, %s, %s);
+                """
+        try:
+            cur.execute(query, (source_id, 'demo', class_name, True))
+        except pymysql.MySQLError as e:
+            print(f"Error inserting into table: {e}")
+    conn.commit()
+    conn.close()
+    print("Data insertion completed.")
+
+def field_insertion(entity_data, source_id):
+    conn = db_conn()
+    cur = conn.cursor()
+
+    for class_name, properties in entity_data.items():
+        for prop_name in properties:
+            trimmed_prop_name = prop_name[:100] if len(prop_name) > 100 else prop_name
+            query = """
+                        INSERT INTO field_metadata (source_id, source_name, property_name, class_name, download_flag)
+                        VALUES (%s, %s, %s, %s, %s);
+                        """
+            try:
+                cur.execute(query, (source_id, 'demo', trimmed_prop_name, class_name, True))
+            except pymysql.MySQLError as e:
+                print(f"Error inserting into field_metadata: {e}")
+
+    conn.commit()
+    conn.close()
+
 
 db = db_conn()
-insertion(metadata_download(897))
+source_id = 897
+classes, entity_data, source_id = metadata_download(source_id)
+class_insertion(classes, source_id)
+field_insertion(entity_data, source_id)
+
+
 
 
 
